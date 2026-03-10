@@ -4,127 +4,106 @@
 
 import { Pane } from 'tweakpane';
 import { params } from './params.js';
-import { damp } from 'three/src/math/MathUtils.js';
+import { logFromNorm, normFromLog, expFromNorm, normFromExp } from './scales.js';
 
-// --- Logarithmic slider helper ---
-// Binds a slider operating in normalized 0..1 space, mapped through a log curve.
-// The slider track position corresponds to log-scaled values, giving more
-// precision at the low end. `base` controls steepness (higher = more low-end room).
+// ---------------------------------------------------------------------------
+// Proxy tracking for preset refresh
+// ---------------------------------------------------------------------------
+// Log/exp/lin helpers create local proxy objects that Tweakpane binds to.
+// When params change externally (preset load), we must update these proxies
+// before calling pane.refresh().
 
-function logFromNorm(t, min, max, base) {
-  if (base <= 1) return min + t * (max - min);
-  return min + (max - min) * (Math.pow(base, t) - 1) / (base - 1);
-}
-
-function normFromLog(value, min, max, base) {
-  if (base <= 1) return (value - min) / (max - min);
-  return Math.log(1 + (value - min) / (max - min) * (base - 1)) / Math.log(base);
-}
-
-// --- Logarithmic slider helper ---
-// Binds a slider operating in normalized 0..1 space, mapped through a log curve.
-// The slider track position corresponds to log-scaled values, giving more
-// precision at the low end. `base` controls steepness (higher = more low-end room).
-
-function expFromNorm(t, min, max, power) {
-	if (power <= 1) return min + t * (max - min);
-	return min + (max - min) * Math.pow(t, power);
-}
-
-function normFromExp(value, min, max, power) {
-	if (power <= 1) return (value - min) / (max - min);
-	return Math.pow((value - min) / (max - min), 1 / power);
-}
+const proxyEntries = [];  // { key, proxy, fromParam }
 
 /**
- * Add a logarithmic-scale slider to a folder.
- * @param {*} folder  Tweakpane folder or tab page
- * @param {Object} obj  Object containing the property
- * @param {string} key  Property name
- * @param {Object} opts  { min, max, step, label? }
+ * Add a linear-scale slider to a folder.
  */
 function addLinBinding(folder, obj, key, opts) {
   const { min, max, step, label } = opts;
   const proxy = { value: obj[key] };
 
+  proxyEntries.push({
+    key,
+    proxy,
+    fromParam: (v) => v,
+  });
+
   const binding = folder.addBinding(proxy, 'value', {
     label: label || key,
-    min: min,
-    max: max,
-    step: step,
+    min, max, step,
     format: (v) => Number(v).toFixed(4),
   });
 
-  binding.on('change', (ev) => {
-		obj[key] = ev.value;
-  });
-
+  binding.on('change', (ev) => { obj[key] = ev.value; });
   return binding;
 }
 
-
 /**
  * Add a logarithmic-scale slider to a folder.
- * @param {*} folder  Tweakpane folder or tab page
- * @param {Object} obj  Object containing the property
- * @param {string} key  Property name
- * @param {Object} opts  { min, max, base, label? }
  */
 function addLogBinding(folder, obj, key, opts) {
   const { min, max, base = 10, label } = opts;
   const proxy = { value: normFromLog(obj[key], min, max, base) };
 
+  proxyEntries.push({
+    key,
+    proxy,
+    fromParam: (v) => normFromLog(v, min, max, base),
+  });
+
   const binding = folder.addBinding(proxy, 'value', {
     label: label || key,
-    min: 0,
-    max: 1,
-    step: 0.001,
+    min: 0, max: 1, step: 0.001,
     format: (v) => logFromNorm(v, min, max, base).toFixed(4),
   });
 
   binding.on('change', (ev) => {
     obj[key] = logFromNorm(ev.value, min, max, base);
   });
-
   return binding;
 }
 
-/** * Add an exponential-scale slider to a folder.
- * @param {*} folder  Tweakpane folder or tab page
- * @param {Object} obj  Object containing the property
- * @param {string} key  Property name
- * @param {Object} opts  { min, max, power, label? }
+/**
+ * Add an exponential-scale slider to a folder.
  */
 function addExpBinding(folder, obj, key, opts) {
-	const { min, max, power = 10, label } = opts;
-	const proxy = { value: normFromExp(obj[key], min, max, power) };
+  const { min, max, power = 10, label } = opts;
+  const proxy = { value: normFromExp(obj[key], min, max, power) };
 
-	const binding = folder.addBinding(proxy, 'value', {
-		label: label || key,
-		min: 0,
-		max: 1,
-		step: 0.001,
-		format: (v) => expFromNorm(v, min, max, power).toFixed(4),
-	});
+  proxyEntries.push({
+    key,
+    proxy,
+    fromParam: (v) => normFromExp(v, min, max, power),
+  });
 
-	binding.on('change', (ev) => {
-		obj[key] = expFromNorm(ev.value, min, max, power);
-	});
+  const binding = folder.addBinding(proxy, 'value', {
+    label: label || key,
+    min: 0, max: 1, step: 0.001,
+    format: (v) => expFromNorm(v, min, max, power).toFixed(4),
+  });
 
-	return binding;
+  binding.on('change', (ev) => {
+    obj[key] = expFromNorm(ev.value, min, max, power);
+  });
+  return binding;
 }
+
+// ---------------------------------------------------------------------------
+// GUI creation
+// ---------------------------------------------------------------------------
 
 /**
  * @param {Object} callbacks
  * @param {Function} callbacks.onRebuild — called when geometry params change (debounced)
  * @param {Function} callbacks.onAudioUpdate — called when audio params change
+ * @param {Function} callbacks.onAnyChange — called on any param change (for storage)
  */
-export function createGUI({ onRebuild, onAudioUpdate }) {
+export function createGUI({ onRebuild, onAudioUpdate, onAnyChange }) {
   // Container element — floats over the canvas
   const container = document.createElement('div');
   container.id = 'tp-container';
   Object.assign(container.style, {
-		position: 'fixed',
+    position: 'fixed',
     top: '10px',
     right: '10px',
     zIndex: '20',
@@ -140,7 +119,13 @@ export function createGUI({ onRebuild, onAudioUpdate }) {
       { title: 'Physics' },
       { title: 'Geometry' },
       { title: 'Audio' },
+      { title: 'Visual' },
     ],
+  });
+
+  // Global change handler for storage persistence
+  pane.on('change', () => {
+    if (onAnyChange) onAnyChange();
   });
 
   // ---- Debounced rebuild ----
@@ -155,28 +140,16 @@ export function createGUI({ onRebuild, onAudioUpdate }) {
 
   const worldFolder = phys.addFolder({ title: 'World' });
   worldFolder.addBinding(params, 'gravity', { min: -20, max: 0, step: 0.1 });
-	worldFolder.addBinding(params, 'solverIterations', { min: 1, max: 50, step: 1 });
-
+  worldFolder.addBinding(params, 'solverIterations', { min: 1, max: 50, step: 1 });
 
   const windFolder = phys.addFolder({ title: 'Wind' });
   addLogBinding(windFolder, params, 'windForceScale', { min: 0.001, max: 0.3, base: 10 });
   addLogBinding(windFolder, params, 'windForceCurveExp', { min: 0.01, max: 10, base: 10 });
   addLogBinding(windFolder, params, 'windAmplitudeX', { label: 'amplitudeX', min: 0, max: 1, base: 10 });
   addLogBinding(windFolder, params, 'windAmplitudeZ', { label: 'amplitudeZ', min: 0, max: 1, base: 10 });
-	addLinBinding(windFolder, params, 'windBiasX', { label: 'biasX', min: -1, max: 1, step: 0.01 });
+  addLinBinding(windFolder, params, 'windBiasX', { label: 'biasX', min: -1, max: 1, step: 0.01 });
   addLinBinding(windFolder, params, 'windBiasZ', { label: 'biasZ', min: -1, max: 1, step: 0.01 });
   addLogBinding(windFolder, params, 'windRate', { label: 'rate', min: 0.001, max: 5, base: 10 });
-
-  /*
-  // Wind
-  windForceCurveExp: 2.5,
-  windForceScale: 1.5,
-  windAmplitudeX: 0.15,
-	windAmplitudeZ: 0.15,
-	windBiasX: 0.25,
-  windBiasZ: -0.1,
-  windRate: 0.1,
-  */
 
   const dampFolder = phys.addFolder({ title: 'Damping' });
   dampFolder.addBinding(params, 'ringDamping', { min: 0, max: 1, step: 0.01 });
@@ -190,14 +163,12 @@ export function createGUI({ onRebuild, onAudioUpdate }) {
   addLogBinding(contactFolder, params, 'clapperFriction', { min: 0.001, max: 1, base: 5 });
   addLogBinding(contactFolder, params, 'clapperRestitution', { min: 0.01, max: 1, base: 3 });
 
-	//worldFolder.on('change', scheduleRebuild);
-
   // ===== Tab 2: Geometry =====
   const geo = tab.pages[1];
 
-	const ringFolder = geo.addFolder({ title: 'Ring' });
-	ringFolder.addBinding(params, 'anchorY', { min: 0.5, max: 5, step: 0.05 });
-	ringFolder.addBinding(params, 'anchorStringLen', { min: 0.1, max: 2, step: 0.01 });
+  const ringFolder = geo.addFolder({ title: 'Ring' });
+  ringFolder.addBinding(params, 'anchorY', { min: 0.5, max: 5, step: 0.05 });
+  ringFolder.addBinding(params, 'anchorStringLen', { min: 0.1, max: 2, step: 0.01 });
   ringFolder.addBinding(params, 'ringRadius', { min: 0.05, max: 0.5, step: 0.01 });
   ringFolder.addBinding(params, 'ringThickness', { min: 0.002, max: 0.1, step: 0.001 });
   ringFolder.addBinding(params, 'ringMass', { min: 0.05, max: 2, step: 0.01 });
@@ -243,11 +214,9 @@ export function createGUI({ onRebuild, onAudioUpdate }) {
   let pitchFolder = aud.addFolder({ title: 'Chime Pitches' });
 
   function buildPitchSliders() {
-    // Remove existing children by disposing and recreating the folder
     pitchFolder.dispose();
     pitchFolder = aud.addFolder({ title: 'Chime Pitches' });
 
-    // Ensure chimeSemitones array matches numChimes
     while (params.chimeSemitones.length < params.numChimes) {
       params.chimeSemitones.push(0);
     }
@@ -280,19 +249,6 @@ export function createGUI({ onRebuild, onAudioUpdate }) {
   windSoundFolder.addBinding(params, 'windFlangerMix', { label: 'flangerMix', min: 0, max: 0.5, step: 0.01 });
   windSoundFolder.addBinding(params, 'windFlangerFeedback', { label: 'flangerFeedback', min: -0.95, max: 0.95, step: 0.01 });
 
-  /*
-  windSoundGain: 0.4,
-  windSoundMinGain: 0.05,
-  windGainFadeIn: 0.33,
-  windFilterMinFreq: 600,
-  windFilterMaxFreq: 6000,
-  windFilterQ: 1.5,
-  windFlangerDepth: 0.003,
-  windFlangerRate: 0.25,
-  windFlangerMix: 0.5,
-  windFlangerFeedback: 0.6,
-  */
-
   const envFolder = aud.addFolder({ title: 'Envelope' });
   envFolder.addBinding(params, 'attack', { min: 0.001, max: 0.1, step: 0.001 });
   envFolder.addBinding(params, 'decay', { min: 0.1, max: 10, step: 0.1 });
@@ -303,5 +259,33 @@ export function createGUI({ onRebuild, onAudioUpdate }) {
     if (onAudioUpdate) onAudioUpdate();
   });
 
-  return { pane, buildPitchSliders };
+  // ===== Tab 4: Visual =====
+  const vis = tab.pages[3];
+
+  const skyFolder = vis.addFolder({ title: 'Sky' });
+  skyFolder.addBinding(params, 'backgroundColor');
+
+  const gradientNames = ['Gradient 1', 'Gradient 2', 'Gradient 3', 'Gradient 4'];
+  for (let i = 0; i < 4; i++) {
+    const gf = skyFolder.addFolder({ title: gradientNames[i] });
+    gf.addBinding(params.skyGradients[i][0], 'color', { label: 'Bottom' });
+    gf.addBinding(params.skyGradients[i][1], 'color', { label: 'Mid' });
+    gf.addBinding(params.skyGradients[i][2], 'color', { label: 'Top' });
+  }
+
+  const renderFolder = vis.addFolder({ title: 'Rendering' });
+  renderFolder.addBinding(params, 'enableBokeh');
+  renderFolder.addBinding(params, 'bokehFocus', { min: 0.5, max: 10, step: 0.1 });
+
+  // -----------------------------------------------------------------------
+  // refreshFromParams — sync all proxy-based bindings after external change
+  // -----------------------------------------------------------------------
+  function refreshFromParams() {
+    for (const entry of proxyEntries) {
+      entry.proxy.value = entry.fromParam(params[entry.key]);
+    }
+    pane.refresh();
+  }
+
+  return { pane, buildPitchSliders, refreshFromParams };
 }

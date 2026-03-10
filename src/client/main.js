@@ -6,6 +6,7 @@ import { initAudio }             from './audio.js';
 import { params, buildChimeConfigs, buildClapperConfig } from './params.js';
 import { createGUI } from './gui.js';
 import { createSky } from './sky.js';
+import { initPresets, scheduleSave } from './preset-storage.js';
 
 // --- Set up scene ---
 const { renderer, scene, camera, composer } = createScene();
@@ -33,9 +34,9 @@ function build() {
 
   physics = createPhysicsWorld(chimeConfigs, clapperConfig, {
     ringRadius: params.ringRadius,
-		ringMass: params.ringMass,
+    ringMass: params.ringMass,
     anchorY: params.anchorY,
-		anchorStringLen: params.anchorStringLen,
+    anchorStringLen: params.anchorStringLen,
   });
 
   meshes = createWindchimeMeshes(scene, physics);
@@ -55,6 +56,19 @@ const gui = createGUI({
     gui.buildPitchSliders();
   },
   onAudioUpdate: () => {
+    if (audioHandle) audioHandle.updateFromParams();
+  },
+  onAnyChange: () => {
+    scheduleSave();
+  },
+});
+
+// --- Presets: load from URL hash or localStorage ---
+initPresets({
+  onLoad: () => {
+    gui.refreshFromParams();
+    build();
+    gui.buildPitchSliders();
     if (audioHandle) audioHandle.updateFromParams();
   },
 });
