@@ -9,7 +9,7 @@ import { createSky } from './sky.js';
 import { initPresets, scheduleSave } from './preset-storage.js';
 
 // --- Set up scene ---
-const { renderer, scene, camera, composer } = createScene();
+const { renderer, scene, camera, composer, key, ground } = createScene();
 
 // --- Background scenery ---
 const scenery = createSky(scene);
@@ -102,6 +102,12 @@ function frame() {
 
   meshes.update();
   scenery.update(wind.state, elapsed);
+
+  // Sync lighting and ground from params
+  key.color.set(params.lightColor);
+  key.intensity = params.lightIntensity;
+  key.position.set(params.lightDirX, params.lightDirY, params.lightDirZ);
+  ground.position.y = params.groundY;
 
   // Parallax: gentle camera drift in wind direction.
   // Amplitude ≈ ±0.06 units → near objects shift, far mountains barely move.

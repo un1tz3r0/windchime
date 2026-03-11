@@ -7,7 +7,7 @@
  * - Toast: brief notification messages
  */
 
-import { params } from './params.js';
+import { params, DEFAULT_PARAMS } from './params.js';
 import { encodePreset, decodePreset, applyPreset } from './preset-codec.js';
 
 const STORAGE_KEY = 'windchime-params';
@@ -102,6 +102,27 @@ function createShareFAB() {
     const encoded = encodePreset(params);
     const url = window.location.origin + window.location.pathname + '#' + encoded;
     openModal(url);
+  });
+
+  document.body.appendChild(btn);
+}
+
+// ---------------------------------------------------------------------------
+// Reset FAB
+// ---------------------------------------------------------------------------
+
+function createResetFAB(onReset) {
+  const btn = document.createElement('button');
+  btn.id = 'reset-fab';
+  btn.setAttribute('aria-label', 'Reset to defaults');
+  // Refresh/recycle icon
+  btn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`;
+
+  btn.addEventListener('click', () => {
+    applyJSON(DEFAULT_PARAMS);
+    localStorage.removeItem(STORAGE_KEY);
+    showToast('Reset to defaults');
+    onReset();
   });
 
   document.body.appendChild(btn);
@@ -209,6 +230,7 @@ export function initPresets({ onLoad }) {
     }
   }
 
-  // 3. Create share FAB
+  // 3. Create FABs
   createShareFAB();
+  createResetFAB(onLoad);
 }

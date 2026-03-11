@@ -1,19 +1,5 @@
 import * as THREE from 'three';
 
-const CHIME_MATERIAL = new THREE.MeshStandardMaterial({
-  color: 0xc0c0c0,
-  metalness: 0.09,
-  roughness: 0.05,
-});
-
-const STRING_MATERIAL = new THREE.LineBasicMaterial({ color: 0x776644 });
-
-const CLAPPER_MATERIAL = new THREE.MeshStandardMaterial({
-  color: 0xdddbd0,
-  metalness: 0.09,
-  roughness: 0.03,
-});
-
 import { params } from './params.js';
 
 // Scratch vectors for computing world-space offsets
@@ -27,15 +13,30 @@ const _q = new THREE.Quaternion();
 export function createWindchimeMeshes(scene, physics) {
   const group = new THREE.Group();
 
+  // --- Materials (created per-build, synced each frame) ---
+  const chimeMat = new THREE.MeshStandardMaterial({
+    color: params.chimeColor, metalness: 0.09, roughness: 0.05,
+  });
+  const ringMat = new THREE.MeshStandardMaterial({
+    color: params.ringColor, metalness: 0.09, roughness: 0.05,
+  });
+  const clapperMat = new THREE.MeshStandardMaterial({
+    color: params.clapperColor, metalness: 0.09, roughness: 0.03,
+  });
+  const stringMat = new THREE.LineBasicMaterial({
+    color: params.stringColor, linewidth: params.stringWidth,
+  });
+
   // --- Anchor string (fixed point → ring) ---
   const anchorStringGeo = new THREE.BufferGeometry();
   anchorStringGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
-  const anchorString = new THREE.Line(anchorStringGeo, STRING_MATERIAL);
+  const anchorString = new THREE.Line(anchorStringGeo, stringMat);
   group.add(anchorString);
 
   // --- Support ring ---
   const ringGeo = new THREE.TorusGeometry(params.ringRadius, params.ringThickness, 8, 32);
-  const ringMesh = new THREE.Mesh(ringGeo, CHIME_MATERIAL);
+  const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+  ringMesh.castShadow = true;
   ringMesh.rotation.x = Math.PI / 2; // will be overwritten by quaternion
   group.add(ringMesh);
 
@@ -45,20 +46,22 @@ export function createWindchimeMeshes(scene, physics) {
 
     // Cylinder
     const geo = new THREE.CylinderGeometry(c.radius, c.radius, tubeHeight, 12, 1, true);
-    const mesh = new THREE.Mesh(geo, CHIME_MATERIAL);
+    const mesh = new THREE.Mesh(geo, chimeMat);
     mesh.castShadow = true;
     group.add(mesh);
 
     // End caps
     const capGeo = new THREE.CircleGeometry(c.radius, 12);
-    const topCap = new THREE.Mesh(capGeo, CHIME_MATERIAL);
-    const botCap = new THREE.Mesh(capGeo, CHIME_MATERIAL);
+    const topCap = new THREE.Mesh(capGeo, chimeMat);
+    const botCap = new THREE.Mesh(capGeo, chimeMat);
+    topCap.castShadow = true;
+    botCap.castShadow = true;
     group.add(topCap, botCap);
 
     // String from ring pivot to top of chime
     const stringGeo = new THREE.BufferGeometry();
     stringGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
-    const stringLine = new THREE.Line(stringGeo, STRING_MATERIAL);
+    const stringLine = new THREE.Line(stringGeo, stringMat);
     group.add(stringLine);
 
     return { mesh, topCap, botCap, stringLine };
@@ -66,19 +69,26 @@ export function createWindchimeMeshes(scene, physics) {
 
   // --- Clapper ---
   const clapperGeo = new THREE.SphereGeometry(physics.clapper.radius, 12, 8);
-  const clapperMesh = new THREE.Mesh(clapperGeo, CLAPPER_MATERIAL);
+  const clapperMesh = new THREE.Mesh(clapperGeo, clapperMat);
   clapperMesh.castShadow = true;
   group.add(clapperMesh);
 
   const clapperStringGeo = new THREE.BufferGeometry();
   clapperStringGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
-  const clapperString = new THREE.Line(clapperStringGeo, STRING_MATERIAL);
+  const clapperString = new THREE.Line(clapperStringGeo, stringMat);
   group.add(clapperString);
 
   scene.add(group);
 
   // --- Sync function ---
   function update() {
+    // Sync material colors from params
+    chimeMat.color.set(params.chimeColor);
+    ringMat.color.set(params.ringColor);
+    clapperMat.color.set(params.clapperColor);
+    stringMat.color.set(params.stringColor);
+    stringMat.linewidth = params.stringWidth;
+
     const ringBody = physics.ring.body;
     const ringPos = ringBody.position;
     const ringQuat = ringBody.quaternion;
@@ -166,6 +176,10 @@ export function createWindchimeMeshes(scene, physics) {
     group.traverse((obj) => {
       if (obj.geometry) obj.geometry.dispose();
     });
+    chimeMat.dispose();
+    ringMat.dispose();
+    clapperMat.dispose();
+    stringMat.dispose();
   }
 
   return { update, dispose };

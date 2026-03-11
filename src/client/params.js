@@ -9,7 +9,7 @@ export const params = {
   // Physics
   gravity: -9.81,
   solverIterations: 10,
-  anchorY: 2.85,
+  anchorY: 1.85,
 	anchorStringLen: 0.85,
 
 	ringMass: 0.3,

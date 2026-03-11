@@ -38,11 +38,31 @@
     #unmute.faded { opacity: 0; pointer-events: none; }
     #unmute svg { width: 24px; height: 24px; fill: #ccc; }
 
+    /* Reset FAB */
+    #reset-fab {
+      position: fixed;
+      bottom: 24px;
+      left: 84px;
+      width: 48px;
+      height: 48px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease;
+      z-index: 10;
+    }
+    #reset-fab:hover { background: rgba(255,255,255,0.22); }
+    #reset-fab svg { width: 22px; height: 22px; fill: #ccc; }
+
     /* Share FAB */
     #share-fab {
       position: fixed;
       bottom: 24px;
-      left: 84px;
+      left: 144px;
       width: 48px;
       height: 48px;
       border: none;

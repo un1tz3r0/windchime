@@ -111,17 +111,7 @@ export function createSky(scene, options = {}) {
 	});
 	const domeMesh = new THREE.Mesh(domeGeo, domeMat);
 
-	// --- Floor disc ---
-	const floorGeo = new THREE.CircleGeometry(radius, widthSegments);
-	const floorMat = new THREE.MeshBasicMaterial({ color: floorColor, depthWrite: false });
-	const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-	floorMesh.rotation.x = -Math.PI / 2;
-	floorMesh.position.x = domeGeo.attributes.position.x;
-	floorMesh.position.y = domeGeo.attributes.position.y;
-	floorMesh.position.z = domeGeo.attributes.position.z;
-
 	scene.add(domeMesh);
-	scene.add(floorMesh);
 
 	return {
 		update(_windState, _elapsed) {
@@ -129,11 +119,8 @@ export function createSky(scene, options = {}) {
 		},
 		dispose() {
 			scene.remove(domeMesh);
-			scene.remove(floorMesh);
 			domeGeo.dispose();
 			domeMat.dispose();
-			floorGeo.dispose();
-			floorMat.dispose();
 		},
 	};
 }

@@ -16,7 +16,7 @@
  *   'gradient'  — 3 × 24-bit RGB (bottom, mid, top colors)
  */
 
-export const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 2;
 
 /**
  * Helper: compute how many bits are needed for `numValues` distinct values.
@@ -124,6 +124,30 @@ const V1_FIELDS = [
     def: ['#102020', '#304040', '#88ff88'] },
 ];
 
+// Version 2 — adds appearance, lighting, and ground params.
+// Extends v1 with new fields appended at the end.
+const V2_FIELDS = [
+  ...V1_FIELDS,
+
+  // --- Appearance ---
+  { key: 'chimeColor',       enc: 'color', bits: 24, def: '#c0c0c0' },
+  { key: 'ringColor',        enc: 'color', bits: 24, def: '#c0c0c0' },
+  { key: 'clapperColor',     enc: 'color', bits: 24, def: '#dddbd0' },
+  { key: 'stringColor',      enc: 'color', bits: 24, def: '#776644' },
+  { key: 'stringWidth',      enc: 'lin',   bits: 6,  min: 1, max: 5, def: 1 },
+
+  // --- Lighting ---
+  { key: 'lightColor',       enc: 'color', bits: 24, def: '#ff6a25' },
+  { key: 'lightIntensity',   enc: 'lin',   bits: 8,  min: 0,   max: 5,   def: 1.35 },
+  { key: 'lightDirX',        enc: 'lin',   bits: 8,  min: -10, max: 10,  def: -2.5 },
+  { key: 'lightDirY',        enc: 'lin',   bits: 8,  min: -10, max: 10,  def: 1.8 },
+  { key: 'lightDirZ',        enc: 'lin',   bits: 8,  min: -10, max: 10,  def: 3.5 },
+
+  // --- Ground ---
+  { key: 'groundY',          enc: 'lin',   bits: 8,  min: -5,  max: 2,   def: 0 },
+];
+
 export const FORMAT_VERSIONS = {
   1: V1_FIELDS,
+  2: V2_FIELDS,
 };

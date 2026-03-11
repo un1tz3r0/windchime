@@ -262,6 +262,23 @@ export function createGUI({ onRebuild, onAudioUpdate, onAnyChange }) {
   // ===== Tab 4: Visual =====
   const vis = tab.pages[3];
 
+  const appearFolder = vis.addFolder({ title: 'Appearance' });
+  appearFolder.addBinding(params, 'chimeColor', { label: 'Chimes' });
+  appearFolder.addBinding(params, 'ringColor', { label: 'Ring' });
+  appearFolder.addBinding(params, 'clapperColor', { label: 'Clapper' });
+  appearFolder.addBinding(params, 'stringColor', { label: 'Strings' });
+  appearFolder.addBinding(params, 'stringWidth', { label: 'String Width', min: 1, max: 5, step: 0.5 });
+
+  const lightFolder = vis.addFolder({ title: 'Lighting' });
+  lightFolder.addBinding(params, 'lightColor', { label: 'Color' });
+  lightFolder.addBinding(params, 'lightIntensity', { label: 'Intensity', min: 0, max: 5, step: 0.05 });
+  lightFolder.addBinding(params, 'lightDirX', { label: 'Dir X', min: -10, max: 10, step: 0.1 });
+  lightFolder.addBinding(params, 'lightDirY', { label: 'Dir Y', min: -10, max: 10, step: 0.1 });
+  lightFolder.addBinding(params, 'lightDirZ', { label: 'Dir Z', min: -10, max: 10, step: 0.1 });
+
+  const groundFolder = vis.addFolder({ title: 'Ground' });
+  groundFolder.addBinding(params, 'groundY', { label: 'Height', min: -5, max: 2, step: 0.05 });
+
   const skyFolder = vis.addFolder({ title: 'Sky' });
   skyFolder.addBinding(params, 'backgroundColor');
 

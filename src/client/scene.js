@@ -10,6 +10,7 @@ export function createScene() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -33,14 +34,36 @@ export function createScene() {
   scene.add(ambient);
 
   // Key: low-angle sunset from camera-left, warm deep orange
-  const key = new THREE.DirectionalLight(0xff6a25, 1.35);
-  key.position.set(-2.5, 1.8, 3.5);
+  const key = new THREE.DirectionalLight(params.lightColor, params.lightIntensity);
+  key.position.set(params.lightDirX, params.lightDirY, params.lightDirZ);
   key.castShadow = true;
+  // Shadow camera bounds — tight around windchime for better resolution
+  key.shadow.mapSize.width = 1024;
+  key.shadow.mapSize.height = 1024;
+  key.shadow.camera.near = 0.1;
+  key.shadow.camera.far = 20;
+  key.shadow.camera.left = -3;
+  key.shadow.camera.right = 3;
+  key.shadow.camera.top = 5;
+  key.shadow.camera.bottom = -3;
   scene.add(key);
 
   // Sky fill: cool blue-violet from sky dome above
   const fill = new THREE.HemisphereLight(0x304060, 0x1a1008, 0.30);
   scene.add(fill);
+
+  // ── Shadow-receiving ground plane ───────────────────────────────────────
+  const groundGeo = new THREE.PlaneGeometry(40, 40);
+  const groundMat = new THREE.MeshStandardMaterial({
+    color: 0x333333,
+    roughness: 1,
+    metalness: 0,
+  });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = params.groundY;
+  ground.receiveShadow = true;
+  scene.add(ground);
 
   // ── Post-processing: Depth of Field ───────────────────────────────────────
   const composer = new EffectComposer(renderer);
@@ -66,5 +89,5 @@ export function createScene() {
     composer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  return { renderer, scene, camera, composer };
+  return { renderer, scene, camera, composer, key, ground };
 }
