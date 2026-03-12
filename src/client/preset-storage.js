@@ -7,10 +7,30 @@
  * - Toast: brief notification messages
  */
 
-import { params, DEFAULT_PARAMS } from './params.js';
+import { params } from './params.js';
 import { encodePreset, decodePreset, applyPreset } from './preset-codec.js';
+import { FORMAT_VERSIONS } from './preset-format.js';
 
 const STORAGE_KEY = 'windchime-params';
+
+// ---------------------------------------------------------------------------
+// get a flat object with all the current params set to their default values,
+// for use in preset encoding/decoding, and also for resetting to defaults
+// ---------------------------------------------------------------------------
+
+/*export function getDefaults(dest = null) {
+	let result = dest || {};
+	for (const versionkey of Object.keys(FORMAT_VERSIONS)) {
+		const versionspecs = FORMAT_VERSIONS[versionkey];
+		for (const paramspec of versionspecs) {
+			result[paramspec['key']] = paramspec['def'];
+		}
+	}
+	return result;
+}
+
+getDefaults(params);
+*/
 
 // ---------------------------------------------------------------------------
 // Toast notifications

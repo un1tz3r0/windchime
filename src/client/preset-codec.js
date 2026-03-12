@@ -369,20 +369,66 @@ export function decodePreset(str) {
 }
 
 // ---------------------------------------------------------------------------
+// Decode — returns { values: Object } on success, or { error: string }
+// ---------------------------------------------------------------------------
+
+export function decodeDefaults()
+{
+  // Version
+  const max_version = CURRENT_VERSION;
+	const fields = [];
+	for (let version = 1; version <= max_version; version++) {
+		fields.push(...FORMAT_VERSIONS[version]);
+	}
+  if (!fields) return { error: 'Unknown preset format version ' + version };
+
+  // Determine numChimes (needed for semitones length).
+  // It's always present in the field list; read its value from the bitfield
+  // or fall back to the default.
+  const numChimesField = fields.find(f => f.key === 'numChimes');
+  let numChimes = numChimesField ? numChimesField.def : 6;
+
+  // Build result from defaults, overriding non-default fields
+  const values = {};
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i];
+
+		// Use default
+		if (field.enc === 'semitones') {
+			values[field.key] = field.def.slice(0, numChimes);
+		} else if (field.enc === 'gradient') {
+			values[field.key] = [...field.def];
+		} else {
+			values[field.key] = field.def;
+		}
+
+    // Track numChimes so semitones knows its length
+    if (field.key === 'numChimes') {
+      numChimes = values.numChimes;
+    }
+  }
+
+  return values;
+}
+
+// ---------------------------------------------------------------------------
 // Apply decoded values to the live params object
 // ---------------------------------------------------------------------------
 
 export function applyPreset(decoded, params) {
   for (const [key, value] of Object.entries(decoded)) {
-    if (key === 'chimeSemitones') {
-      params.chimeSemitones.length = 0;
+		if (key === 'chimeSemitones') {
+			params['chimeSemitones'] = params['chimeSemitones'] || [];
+      //params.chimeSemitones.length = 0;
       value.forEach(v => params.chimeSemitones.push(v));
-    } else if (key.startsWith('skyGradient')) {
+		} else if (key.startsWith('skyGradient')) {
+			params['skyGradients'] = params['skyGradients'] || [];
       const idx = parseInt(key.replace('skyGradient', ''));
-      for (let j = 0; j < 3; j++) {
-        params.skyGradients[idx][j].color = value[j];
+      params['skyGradients'][idx] = params.skyGradients[idx] || [];
+			for (let j = 0; j < 3; j++) {
+				params.skyGradients[idx][j] = { 'color': value[j], 'stop': 0.5 * j };
       }
-    } else if (key in params) {
+    } else {
       params[key] = value;
     }
   }

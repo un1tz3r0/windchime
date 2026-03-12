@@ -7,6 +7,9 @@ import { params, buildChimeConfigs, buildClapperConfig } from './params.js';
 import { createGUI } from './gui.js';
 import { createSky } from './sky.js';
 import { initPresets, scheduleSave } from './preset-storage.js';
+import { decodeDefaults, applyPreset } from './preset-codec.js';
+
+applyPreset(decodeDefaults(), params);
 
 // --- Set up scene ---
 const { renderer, scene, camera, composer, key, ground } = createScene();

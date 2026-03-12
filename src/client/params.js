@@ -5,6 +5,7 @@
 
 const SEMITONE_RATIO = Math.pow(2, 1 / 12);
 
+/*
 export const params = {
   // Physics
   gravity: -9.81,
@@ -100,7 +101,13 @@ export const params = {
 			{ offset: 1.0, color: '#88ff88' },
 		]
 	]
-};
+}; */
+
+//import { getDefaults } from './preset-storage.js';
+
+
+export const params = {};
+
 
 /** Build per-chime physics/geometry configs from flat params. */
 export function buildChimeConfigs(p) {
