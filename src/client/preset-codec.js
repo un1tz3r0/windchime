@@ -369,7 +369,7 @@ export function decodePreset(str) {
 }
 
 // ---------------------------------------------------------------------------
-// Decode — returns { values: Object } on success, or { error: string }
+// Decode — returns Object on success, or { error: string }
 // ---------------------------------------------------------------------------
 
 export function decodeDefaults()
@@ -408,7 +408,7 @@ export function decodeDefaults()
     }
   }
 
-  return values;
+	return { values };
 }
 
 // ---------------------------------------------------------------------------
@@ -416,6 +416,9 @@ export function decodeDefaults()
 // ---------------------------------------------------------------------------
 
 export function applyPreset(decoded, params) {
+	if (decoded['values'] != undefined) {
+		decoded = decoded['values'];
+	}
   for (const [key, value] of Object.entries(decoded)) {
 		if (key === 'chimeSemitones') {
 			params['chimeSemitones'] = params['chimeSemitones'] || [];

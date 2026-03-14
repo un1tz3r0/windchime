@@ -106,8 +106,27 @@ export const params = {
 //import { getDefaults } from './preset-storage.js';
 
 
-export const params = {};
+export var params = {};
+export var paramsReady = false;
+export var paramsReadyCallbacks = [];
 
+export function onParamsReady(callback) {
+	if (paramsReady) {
+		callback(params);
+	} else {
+		paramsReadyCallbacks.push(callback);
+	}
+}
+
+export const setDefaultParams = (defaults) => {
+	if(paramsReady === true) {
+		console.warn('Params have already been set. Overwriting with new defaults.');
+	} else {
+		Object.assign(params, defaults);
+		paramsReady = true;
+		paramsReadyCallbacks.forEach(cb => cb(params));
+	}
+}
 
 /** Build per-chime physics/geometry configs from flat params. */
 export function buildChimeConfigs(p) {
